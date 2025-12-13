@@ -634,9 +634,23 @@ if not xgb_available:
 
 # دالة إنشاء نموذج افتراضي للطوارئ
 def create_fallback_model():
-    """إنشاء نموذج افتراضي في حال عدم وجود نماذج"""
+    """إنشاء نموذج احتياطي بسيط"""
     from sklearn.ensemble import RandomForestClassifier
     from sklearn.datasets import make_classification
+    try:
+        # نموذج بسيط جداً
+        X, y = make_classification(n_samples=100, n_features=3, n_informative=2, 
+                                   n_redundant=0, n_repeated=0, random_state=42)
+        
+        model = RandomForestClassifier(n_estimators=5, random_state=42)
+        model.fit(X, y)
+        
+        st.success("تم إنشاء النموذج الاحتياطي بنجاح!" if st.session_state.language == 'العربية' else "Fallback model created successfully!")
+        return model
+    except Exception as e:
+        st.error(f"خطأ في إنشاء النموذج: {e}" if st.session_state.language == 'العربية' else f"Failed to create fallback model: {e}")
+        return None
+
     
     try:
         with st.spinner("🔄 جاري إنشاء نموذج افتراضي..." if st.session_state.language == 'العربية' else "🔄 Creating fallback model..."):
