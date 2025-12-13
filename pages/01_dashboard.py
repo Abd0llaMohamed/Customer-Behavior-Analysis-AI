@@ -15,6 +15,40 @@ from subscriptions import show_subscription_page
 from auth import check_session, get_user_subscription, increment_usage, clear_session
 # ============== حماية الصفحة ==============
 from auth import check_session, clear_session
+import gdown
+
+# ============== تحميل النماذج من Google Drive ==============
+MODEL_URLS = {
+    'rf_churn_model.pkl': 'https://drive.google.com/uc?id=1idlcUhdY2iEig13jnqy4QMAOUnfgw_RI&export=download',
+    'xgb_churn_model.pkl': 'https://drive.google.com/uc?id=1ZiTC5OEMWOpjp2rMoBFtCWi-gxVWnlPw&export=download',
+    'best_churn_model.pkl': 'https://drive.google.com/uc?id=1bWSqxCFri4UHeb4KP3p-try70E7nkLuq&export=download'
+}
+
+@st.cache_resource
+def load_models():
+    """تحميل النماذج من Google Drive"""
+    models = {}
+    for model_name, drive_url in MODEL_URLS.items():
+        model_path = model_name
+        if not os.path.exists(model_path):
+            st.info(f"جاري تحميل {model_name}...")
+            try:
+                gdown.download(drive_url, model_path, quiet=True)
+                st.success(f"✅ تم تحميل {model_name}")
+            except Exception as e:
+                st.warning(f"⚠️ خطأ في تحميل {model_name}: {e}")
+        
+        if os.path.exists(model_path):
+            try:
+                models[model_name.replace('.pkl', '')] = joblib.load(model_path)
+            except Exception as e:
+                st.error(f"❌ خطأ في فتح {model_name}: {e}")
+    
+    return models
+
+# تحميل النماذج
+models = load_models()
+# =========================================================
 
 is_logged_in, username = check_session()
 
