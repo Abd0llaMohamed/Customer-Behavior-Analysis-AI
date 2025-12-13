@@ -5,7 +5,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import joblib
 import os
-import json  # ← جديد
+import json
 import importlib
 from streamlit_option_menu import option_menu
 from io import BytesIO
@@ -13,9 +13,45 @@ from datetime import datetime, timedelta
 from chatbot import show_chatbot
 from subscriptions import show_subscription_page
 from auth import check_session, get_user_subscription, increment_usage, clear_session
-# ============== حماية الصفحة ==============
-from auth import check_session, clear_session
-import gdown
+
+# ============== تكوين الصفحة (يجب أن يكون الأول) ==============
+st.set_page_config(page_title="📊 Dashboard", layout="wide", initial_sidebar_state="expanded")
+
+# ============== التحقق من الجلسة ==============
+# تحميل الجلسة من الملف أولاً
+if 'logged_in' not in st.session_state:
+    if os.path.exists('current_session.json'):
+        try:
+            with open('current_session.json', 'r', encoding='utf-8') as f:
+                session_data = json.load(f)
+                st.session_state.logged_in = session_data.get('logged_in', False)
+                st.session_state.username = session_data.get('username', '')
+                st.session_state.subscription = session_data.get('subscription', 'free')
+        except:
+            pass
+
+# فحص الجلسة مرة واحدة فقط
+is_logged_in, username = check_session()
+if not is_logged_in:
+    st.error("⚠️ يرجى تسجيل الدخول أولاً!")
+    st.info("👈 اذهب للصفحة الرئيسية من القائمة الجانبية")
+    st.stop()
+
+# حفظ بيانات المستخدم في session_state
+if 'username' not in st.session_state:
+    st.session_state.username = username
+if 'subscription' not in st.session_state:
+    st.session_state.subscription = get_user_subscription(username)
+
+# زيادة عداد الاستخدام
+increment_usage(username)
+
+# ============== تحميل gdown ==============
+try:
+    import gdown
+except ImportError:
+    st.warning("gdown not available, using fallback")
+    gdown = None
 
 # ============== تحميل النماذج من Google Drive ==============
 MODEL_URLS = {
@@ -33,8 +69,9 @@ def load_models():
         if not os.path.exists(model_path):
             st.info(f"جاري تحميل {model_name}...")
             try:
-                gdown.download(drive_url, model_path, quiet=True)
-                st.success(f"✅ تم تحميل {model_name}")
+                if gdown:
+                    gdown.download(drive_url, model_path, quiet=True)
+                    st.success(f"✅ تم تحميل {model_name}")
             except Exception as e:
                 st.warning(f"⚠️ خطأ في تحميل {model_name}: {e}")
         
@@ -48,15 +85,13 @@ def load_models():
 
 # تحميل النماذج
 models = load_models()
-# =========================================================
 
-is_logged_in, username = check_session()
+# ============== إعداد اللغة ==============
+if 'language' not in st.session_state:
+    st.session_state.language = 'العربية'
 
-if not is_logged_in:
-    st.error("⚠️ يرجى تسجيل الدخول أولاً!")
-    st.info("👈 اذهب للصفحة الرئيسية من القائمة الجانبية")
-    st.stop()
-# ==========================================
+# ============== القواميس (translations) ==============
+# ... (باقي الكود كما هو)
 
 
 # ---------------- Page config (call early) ----------------
@@ -1015,7 +1050,7 @@ if page == get_text('dashboard'):
         fig = px.pie(pie_data, names='Segment', values='count', color='Segment',
                      color_discrete_map=color_map, title=title)
         fig.update_traces(textinfo='label+percent')
-        st.plotly_chart(fig, width='stretch')
+        st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
     
     with col2:
         # توزيع الشرائح المتقدمة
@@ -1025,7 +1060,7 @@ if page == get_text('dashboard'):
         fig2 = px.bar(advanced_segment_data, x='Segment', y='count', 
                        title="Advanced Customer Segments" if st.session_state.language == 'English' else "الشرائح المتقدمة للعملاء",
                        color='count', color_continuous_scale='viridis')
-        st.plotly_chart(fig2, width='stretch')
+        st.plotly_chart(fig2, use_container_width=True, config={'displayModeBar': False})
 
     st.write("#### Most Risky Customers (Top 10)" if st.session_state.language == 'English' else "#### العملاء الأكثر خطورة (Top 10)")
     top_risk = df.sort_values('Churn_Probability', ascending=False).head(10)
@@ -1208,7 +1243,7 @@ elif page == get_text('marketing_automation'):
                 fig = px.bar(campaign_df, x='Campaign', y='Expected Revenue', 
                              title="الإيرادات المتوقعة للحملات" if st.session_state.language == 'العربية' else "Expected Revenue by Campaign",
                              color='Expected Revenue', color_continuous_scale='viridis')
-                st.plotly_chart(fig, width='stretch')
+                st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
         else:
             st.info("📊 ستظهر إحصائيات الأداء هنا بعد تنفيذ الحملات الأولى." if st.session_state.language == 'العربية' else "📊 Performance statistics will appear here after executing the first campaigns.")
 # الدعم الفوري - أضف هذا السطر هنا مباشرة بعد التسويق الآلي
@@ -1229,7 +1264,7 @@ elif page == get_text('high_risk'):
         fig = px.bar(high_risk, x="Name", y="Churn_Probability",
                      color="Churn_Probability", color_continuous_scale=["#f87171", "#fdba74"],
                      title=title)
-        st.plotly_chart(fig, width='stretch')
+        st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
         
         for _, r in high_risk.iterrows():
             with st.expander(f"👤 {r['Name']} — {r['Churn_Probability']:.1f}% — {r['Advanced_Segment']}"):
@@ -1331,7 +1366,7 @@ elif page == get_text('customer_data'):
         fig.add_trace(go.Bar(name='XGB', x=top_df['Name'], y=top_df['Churn_Probability_XGB']))
         fig.add_trace(go.Bar(name='Best' if st.session_state.language == 'English' else 'الأفضل', x=top_df['Name'], y=top_df['Churn_Probability']))
         fig.update_layout(title="Model Comparison" if st.session_state.language == 'English' else "مقارنة النماذج", barmode='group', height=400)
-        st.plotly_chart(fig, width='stretch')
+        st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
         
     else:  # Full advanced details
         show_df = df.copy()
@@ -1376,7 +1411,7 @@ elif page == get_text('advanced_analytics'):
         with col1:
             fig = px.pie(values=segment_stats.values, names=segment_stats.index,
                          title="توزيع الشرائح المتقدمة" if st.session_state.language == 'العربية' else "Advanced Segments Distribution")
-            st.plotly_chart(fig, width='stretch')
+            st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
         
         with col2:
             # إحصائيات مفصلة لكل شريحة
@@ -1411,13 +1446,13 @@ elif page == get_text('advanced_analytics'):
             # توزيع القيم
             fig = px.histogram(df, x='Total_Value', nbins=20, 
                                title="توزيع قيم العملاء" if st.session_state.language == 'العربية' else "Customer Value Distribution")
-            st.plotly_chart(fig, width='stretch')
+            st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
         
         with col2:
             # علاقة الزيارات بالمشتريات
             fig = px.scatter(df, x='Visits', y='Purchases', color='Advanced_Segment',
                              title="العلاقة بين الزيارات والمشتريات" if st.session_state.language == 'العربية' else "Visits vs Purchases Relationship")
-            st.plotly_chart(fig, width='stretch')
+            st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
     
     with tab3:
         st.subheader(get_text('retention_analysis'))
@@ -1430,7 +1465,7 @@ elif page == get_text('advanced_analytics'):
         
         fig = px.bar(retention_by_segment, x='Segment', y='Retention Rate',
                      title="معدل الاحتفاظ حسب الشريحة" if st.session_state.language == 'العربية' else "Retention Rate by Segment")
-        st.plotly_chart(fig, width='stretch')
+        st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
         
         # عملاء جدد مقابل عملاء متكررين
         new_customers = df[df['Purchases'] <= 1].shape[0]
@@ -1447,7 +1482,7 @@ elif page == get_text('advanced_analytics'):
         # توزيع LTV
         fig = px.histogram(df, x='predicted_future_value', nbins=20,
                            title="توزيع القيمة الدائمة للعملاء" if st.session_state.language == 'العربية' else "Customer Lifetime Value Distribution")
-        st.plotly_chart(fig, width='stretch')
+        st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
         
         # أفضل 10 عملاء من حيث القيمة المستقبلية
         st.write("### أفضل 10 عملاء من حيث القيمة المستقبلية" if st.session_state.language == 'العربية' else "### Top 10 Customers by Future Value")
