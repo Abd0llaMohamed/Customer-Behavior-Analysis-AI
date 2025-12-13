@@ -4,10 +4,9 @@ __pycache__/
 *.db
 *.xlsx
 *.csv
-*.png
-*.pkl
 .env
 .streamlit/
 current_session.json
 session.json
 users.json
+customer_shopping_data.csv
