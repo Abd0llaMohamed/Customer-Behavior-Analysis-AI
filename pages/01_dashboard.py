@@ -95,7 +95,6 @@ if 'language' not in st.session_state:
 
 
 # ---------------- Page config (call early) ----------------
-st.set_page_config(page_title="📊 Dashboard", layout="wide", initial_sidebar_state="expanded")
 
 # تحميل الجلسة من الملف الخارجي أولاً
 if 'logged_in' not in st.session_state:
@@ -1069,8 +1068,47 @@ if page == get_text('dashboard'):
     st.dataframe(disp, width='stretch')
 
     csv = df.to_csv(index=False, encoding="utf-8-sig")
-    st.download_button("📥 Download Full Report (CSV)" if st.session_state.language == 'English' else "📥 تنزيل تقرير كامل (CSV)", 
-                        data=csv, file_name="clients_full_report.csv")
+    st.download_button("📥 Download Full Report (CSV)" if st.session_state.language == 'English' else "📥 تنزيل تقرير كامل (CSV)",
+                    data=csv, 
+                    file_name="clients_full_report.csv",
+                    key="download_report_1") 
+
+
+    # ========== أضف هنا! ========== ⬇️⬇️⬇️
+    
+    # حفظ التحليل في Database
+    if 'last_analysis_saved' not in st.session_state:
+        st.session_state.last_analysis_saved = False
+
+    st.divider()
+    st.write("### 💾 حفظ التحليل" if st.session_state.language == 'العربية' else "### 💾 Save Analysis")
+
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.info("احفظ هذا التحليل لمراجعته لاحقاً من صفحة 'سجل التحليلات'" if st.session_state.language == 'العربية' else "Save this analysis to review it later from 'Analysis History' page")
+    with col2:
+        button_text = "💾 حفظ التحليل" if st.session_state.language == 'العربية' else "💾 Save Analysis"
+        if st.button(button_text, type="primary", use_container_width=True):
+            with st.spinner("جاري حفظ التحليل..." if st.session_state.language == 'العربية' else "Saving analysis..."):
+                from database import save_analysis, delete_old_analyses
+                
+                analysis_id = save_analysis(df, st.session_state.username)
+                
+                if analysis_id:
+                    success_msg = f"✅ تم حفظ التحليل بنجاح! (رقم #{analysis_id})" if st.session_state.language == 'العربية' else f"✅ Analysis saved successfully! (ID #{analysis_id})"
+                    st.success(success_msg)
+                    st.session_state.last_analysis_saved = True
+                    
+                    delete_old_analyses(st.session_state.username, keep_count=10)
+                else:
+                    error_msg = "❌ فشل حفظ التحليل" if st.session_state.language == 'العربية' else "❌ Failed to save analysis"
+                    st.error(error_msg)
+    
+    # ========== نهاية الإضافة ========== ⬆️⬆️⬆️
+
+# Marketing Automation Page - الصفحة الجديدة
+elif page == get_text('marketing_automation'):
+    st.header(get_text('marketing_automation_title'))
 
 # Marketing Automation Page - الصفحة الجديدة
 elif page == get_text('marketing_automation'):

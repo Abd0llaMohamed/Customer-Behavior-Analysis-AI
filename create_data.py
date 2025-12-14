@@ -6,7 +6,7 @@ for i in range(1, 101):
     data.append({
         'ID': i,
         'Name': f'عميل {i}',
-        'Purchases': random.randint(1, 25),
+        'Purchases': random.randint(100, 600),
         'Total_Value': random.randint(100, 3000),
         'Visits': random.randint(1, 60)
     })
