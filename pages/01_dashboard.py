@@ -1106,14 +1106,20 @@ if page == get_text('dashboard'):
     
     # ========== نهاية الإضافة ========== ⬆️⬆️⬆️
 
-# Marketing Automation Page - الصفحة الجديدة
-elif page == get_text('marketing_automation'):
-    st.header(get_text('marketing_automation_title'))
-
-# Marketing Automation Page - الصفحة الجديدة
+# Marketing Automation Page - الصفحة الجديدة# Marketing Automation Page
 elif page == get_text('marketing_automation'):
     st.header(get_text('marketing_automation_title'))
     
+    tab1, tab2, tab3 = st.tabs([
+        get_text('segment_actions'),
+        get_text('auto_recommendations'),
+        get_text('campaign_results')
+    ])
+    
+    with tab1:
+        st.subheader(get_text('segment_actions'))
+
+# Marketing Automation Page - الصفحة الجديدة
     tab1, tab2, tab3 = st.tabs([
         get_text('segment_actions'),
         get_text('auto_recommendations'),
